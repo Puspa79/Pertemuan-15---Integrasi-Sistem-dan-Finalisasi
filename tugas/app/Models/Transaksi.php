@@ -31,15 +31,13 @@ class Transaksi extends Model
     // Relationship ke Anggota (belongsTo)
     public function anggota()
     {
-        return $this->belongsTo(Anggota::class);
+        return $this->belongsTo(Anggota::class, 'anggota_id'); // sesuaikan foreign key Anda
     }
- 
-    // Relationship ke Buku (belongsTo)
+
     public function buku()
     {
-        return $this->belongsTo(Buku::class);
+        return $this->belongsTo(Buku::class, 'buku_id');
     }
- 
     // Accessor untuk durasi peminjaman (hari)
     public function getDurasiPeminjamanAttribute()
     {

@@ -26,8 +26,16 @@ class SearchController extends Controller
             ->get();
 
         // 3. Cari data Transaksi (Mencari berdasarkan kode_transaksi)
-        $transaksi = Transaksi::where('kode_transaksi', 'LIKE', "%{$keyword}%")
-            ->with(['anggota', 'buku']) // eager load relasi agar tidak n+1 query
+        // 3. Cari data Transaksi (Mencari berdasarkan kode, nama anggota, ATAU judul buku)
+        $transaksi = Transaksi::with(['anggota', 'buku'])
+            ->where('kode_transaksi', 'LIKE', "%{$keyword}%")
+            ->orWhereHas('anggota', function ($query) use ($keyword) {
+                // Menggunakan LOWER untuk memastikan huruf besar/kecil tidak berpengaruh
+                $query->whereRaw('LOWER(nama) LIKE ?', ["%".strtolower($keyword)."%"]);
+            })
+            ->orWhereHas('buku', function ($query) use ($keyword) {
+                $query->whereRaw('LOWER(judul) LIKE ?', ["%".strtolower($keyword)."%"]);
+            })
             ->get();
 
         // Bungkus sesuai dengan struktur array $results di Blade Anda

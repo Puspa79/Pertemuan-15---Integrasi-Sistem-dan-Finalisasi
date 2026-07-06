@@ -95,10 +95,11 @@
                                     <h6 class="text-sm font-mono font-bold text-blue-600">{{ $trx->kode_transaksi }}</h6>
                                     <span class="text-xs text-gray-400">{{ $trx->created_at?->format('d M Y') }}</span>
                                 </div>
+                                {{-- Ganti bagian ini --}}
                                 <div class="mt-2 text-sm text-gray-700">
-                                    <span class="font-semibold text-gray-800">{{ $trx->anggota->nama }}</span> 
+                                    <span class="font-semibold text-gray-800">{{ $trx->anggota?->nama ?? 'Anggota Tidak Diketahui' }}</span> 
                                     <span class="text-gray-400 mx-1">meminjam</span> 
-                                    <span class="italic text-gray-600">"{{ $trx->buku->judul }}"</span>
+                                    <span class="italic text-gray-600">"{{ $trx->buku?->judul ?? 'Buku Telah Dihapus' }}"</span>
                                 </div>
                             </div>
                         @empty

@@ -170,15 +170,16 @@
                     <tbody class="divide-y divide-gray-100 bg-white">
                         @forelse($bukuTerlambat as $trx)
                             @php
-                                $hariTerlambat = now()->diffInDays($trx->tanggal_kembali);
+                                // Menggunakan properti diffInDays(now()) agar otomatis menghasilkan angka bulat positif
+                                $hariTerlambat = $trx->tanggal_kembali ? abs(intval(now()->diffInDays($trx->tanggal_kembali))) : 0;
                             @endphp
                             <tr class="hover:bg-red-50/50 transition-colors duration-150">
                                 <td class="px-6 py-3 whitespace-nowrap text-sm font-semibold text-gray-900">{{ $trx->anggota->nama }}</td>
                                 <td class="px-6 py-3 text-sm text-gray-600">{{ Str::limit($trx->buku->judul ?? 'Buku telah dihapus', 40) }}</td>
-                                <td class="px-6 py-3 whitespace-nowrap text-sm text-gray-500">{{ $trx->tanggal_kembali->format('d M Y') }}</td>
+                                <td class="px-6 py-3 whitespace-nowrap text-sm text-gray-500">{{ optional($trx->tanggal_kembali)->format('d M Y') }}</td>
                                 <td class="px-6 py-3 whitespace-nowrap text-center">
                                     <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-red-100 text-red-700">
-                                        Terlambat {{ $hariTerlambat }} hari
+                                        Terlambat {{ $hariTerlambat }} Hari
                                     </span>
                                 </td>
                                 <td class="px-6 py-3 whitespace-nowrap text-center">
@@ -455,7 +456,7 @@
             // CHART 2: Bar - Top 5 Kategori Buku
             // (ID canvas & JS sekarang cocok: chartKategoriPopuler)
             buatChart('chartKategoriPopuler', {
-                type: 'bar',
+                type: 'pie',
                 data: {
                     labels: {!! isset($kategoriChart) ? json_encode($kategoriChart->pluck('nama')) : '[]' !!},
                     datasets: [{
