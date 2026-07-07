@@ -22,6 +22,14 @@ class TransaksiController extends Controller
             ->latest()
             ->get();
 
+        // PENGAMAN OTOMATIS: Jika ada status 'Dipinjam' tapi kolom denda > 0 di database,
+        // kita paksa reset ke 0 saat halaman dibuka agar tidak mengotori kas keuangan dashboard.
+        foreach ($transaksis as $t) {
+            if ($t->status === 'Dipinjam' && $t->denda > 0) {
+                $t->update(['denda' => 0]);
+            }
+        }
+
         return view('transaksi.index', compact('transaksis'));
     }
 
@@ -69,7 +77,7 @@ class TransaksiController extends Controller
                 // 3. Calculate tanggal kembali (7 hari dari tanggal pinjam)
                 $tanggalKembali = Carbon::parse($request->tanggal_pinjam)->addDays(7);
 
-                // 4. Create transaksi
+                // 4. Create transaksi dengan mengunci Denda = 0 & Tanggal Dikembalikan = null
                 Transaksi::create([
                     'kode_transaksi' => $kodeTransaksi,
                     'anggota_id' => $request->anggota_id,
@@ -77,6 +85,8 @@ class TransaksiController extends Controller
                     'tanggal_pinjam' => $request->tanggal_pinjam,
                     'tanggal_kembali' => $tanggalKembali,
                     'status' => 'Dipinjam',
+                    'denda' => 0,                          // Dikunci murni 0 saat buat baru
+                    'tanggal_dikembalikan' => null,        // Dikunci murni null saat baru pinjam
                     'keterangan' => $request->keterangan,
                 ]);
 
@@ -103,53 +113,58 @@ class TransaksiController extends Controller
         $estimasiDenda = 0;
         $keteranganTerlambat = 0;
 
+        // Tampilan di halaman detail HANYA berupa SIMULASI/ESTIMASI sementara, tidak disimpan ke DB
         if ($transaksi->status === 'Dipinjam') {
-            $tenggat = \Carbon\Carbon::parse($transaksi->tenggat_kembali);
-            $sekarang = \Carbon\Carbon::now(); // atau hitung berdasarkan waktu saat ini
+            $tenggat = Carbon::parse($transaksi->tanggal_kembali)->startOfDay();
+            $sekarang = Carbon::now()->startOfDay();
 
-            if ($sekarang->gt($tenggat)) {
-                $keteranganTerlambat = $sekarang->diffInDays($tenggat);
-                
-                // Misalkan denda per hari adalah Rp 1.000 (silakan sesuaikan nominalnya)
-                $tarifDendaPerHari = 1000; 
-                $estimasiDenda = $keteranganTerlambat * $tarifDendaPerHari;
+            if ($sekarang->greaterThan($tenggat)) {
+                $keteranganTerlambat = $tenggat->diffInDays($sekarang);
+                $estimasiDenda = $keteranganTerlambat * 5000;
             }
         }
 
         return view('transaksi.show', compact('transaksi', 'estimasiDenda', 'keteranganTerlambat'));
     }
+
     /**
      * Kembalikan buku (update status transaksi).
      */
-    public function kembalikan(string $id)
+    public function kembalikan($id)
     {
-        try {
-            DB::transaction(function () use ($id) {
-                $transaksi = Transaksi::findOrFail($id);
-
-                if ($transaksi->status === 'Dikembalikan') {
-                    throw new \Exception('Buku sudah dikembalikan sebelumnya.');
-                }
-                // 1. Update transaksi
-                $tanggalDikembalikan = now();
-                $denda = $this->hitungDenda($transaksi, $tanggalDikembalikan);
-
-                $transaksi->update([
-                    'status' => 'Dikembalikan',
-                    'tanggal_dikembalikan' => $tanggalDikembalikan,
-                    'denda' => $denda,
-                ]);
-
-                // 2. Update stok buku (tambah 1)
-                $transaksi->buku->increment('stok');
-            });
-
-            return redirect()->route('transaksi.show', $id)
-                ->with('success', 'Buku berhasil dikembalikan!');
-        } catch (\Exception $e) {
-            return redirect()->back()
-                ->with('error', 'Gagal mengembalikan buku: ' . $e->getMessage());
+        $transaksi = Transaksi::findOrFail($id);
+        
+        // Ambil waktu hari ini saat tombol benar-benar diklik
+        $hari_ini = Carbon::now()->startOfDay();
+        $tanggal_kembali = Carbon::parse($transaksi->tanggal_kembali)->startOfDay();
+        
+        $denda = 0;
+        
+        // HITUNG DENDA MURNI: Hanya dihitung saat tombol benar-benar diklik
+        if ($hari_ini->greaterThan($tanggal_kembali)) {
+            $hariTerlambat = $tanggal_kembali->diffInDays($hari_ini);
+            $tarifDendaPerHari = 5000; 
+            
+            $denda = intval($hariTerlambat * $tarifDendaPerHari);
         }
+
+        $buku = Buku::find($transaksi->buku_id);
+
+        DB::transaction(function () use ($transaksi, $denda, $buku, $hari_ini) {
+            // Update data transaksi & Baru sah simpan nilai denda resmi ke database
+            $transaksi->update([
+                'tanggal_dikembalikan' => $hari_ini,
+                'status' => 'Dikembalikan',
+                'denda' => $denda 
+            ]);
+
+            // Kembalikan stok buku bertambah 1
+            if ($buku) {
+                $buku->increment('stok');
+            }
+        });
+
+        return redirect()->back()->with('success', 'Buku berhasil dikembalikan dengan denda Rp ' . number_format($denda, 0, ',', '.'));
     }
 
     /**
@@ -170,20 +185,20 @@ class TransaksiController extends Controller
     }
 
     /**
-     * Hitung denda keterlambatan.
+     * Hitung denda keterlambatan otomatis.
      */
     private function hitungDenda($transaksi, $tanggalDikembalikan)
     {
-        $hariTerlambat = $transaksi->tanggal_kembali->diffInDays($tanggalDikembalikan, false);
+        $tenggat = Carbon::parse($transaksi->tanggal_kembali)->startOfDay();
+        $realitasKembali = Carbon::parse($tanggalDikembalikan)->startOfDay();
 
-        if ($hariTerlambat > 0) {
-            // Denda Rp 5.000 per hari
-            return $hariTerlambat * 5000;
+        if ($realitasKembali->greaterThan($tenggat)) {
+            $hariTerlambat = $tenggat->diffInDays($realitasKembali);
+            return intval($hariTerlambat * 5000);
         }
 
         return 0;
     }
-
 
     public function laporan(Request $request)
     {
@@ -205,7 +220,6 @@ class TransaksiController extends Controller
         }
 
         $transaksis = $query->latest()->get();
-        // dd(compact('transaksis'));
 
         // Perhitungan Total Ringkasan
         $totalTransaksi = $transaksis->count();
@@ -217,19 +231,11 @@ class TransaksiController extends Controller
 
     public function exportPdf(Request $request)
     {
-        // 1. Ambil data transaksi beserta relasinya
         $transaksis = Transaksi::with(['anggota', 'buku'])->get();
-
-        // 2. Ambil data semua anggota (jika dibutuhkan oleh view)
-        $anggotaList = \App\Models\Anggota::all();
-
-        // 3. SEBELUMNYA: $totalDenda = 0; -> DIUBAH AGAR MENGHITUNG OTOMATIS:
+        $anggotaList = Anggota::all();
         $totalDenda = $transaksis->sum('denda');
-
-        // 4. Hitung total baris transaksi
         $totalTransaksi = $transaksis->count();
 
-        // 5. Generate PDF menggunakan data yang sudah valid
         $pdf = app('dompdf.wrapper')->loadView('transaksi.laporan_pdf', compact(
             'transaksis',
             'totalDenda',
@@ -248,7 +254,9 @@ class TransaksiController extends Controller
 
                 // Kalau buku masih dipinjam, kembalikan stoknya dulu sebelum dihapus
                 if ($transaksi->status == 'Dipinjam') {
-                    $transaksi->buku->increment('stok');
+                    if ($transaksi->buku) {
+                        $transaksi->buku->increment('stok');
+                    }
                 }
 
                 $transaksi->delete();
@@ -265,10 +273,9 @@ class TransaksiController extends Controller
     public function search(Request $request)
     {
         $query = Transaksi::with(['anggota', 'buku' => function ($q) {
-            $q->withTrashed(); // ambil buku meski sudah dihapus
+            $q->withTrashed();
         }]);
 
-        // Filter berdasarkan Keyword (Kode Transaksi / Nama Anggota / Judul Buku)
         if ($request->filled('keyword')) {
             $query->where(function ($q) use ($request) {
                 $q->where('kode_transaksi', 'like', '%' . $request->keyword . '%')
@@ -281,17 +288,14 @@ class TransaksiController extends Controller
             });
         }
 
-        // Filter berdasarkan Tanggal Pinjam
         if ($request->filled('tanggal_pinjam')) {
             $query->whereDate('tanggal_pinjam', $request->tanggal_pinjam);
         }
 
-        // Filter berdasarkan Status
         if ($request->filled('status')) {
             $query->where('status', $request->status);
         }
 
-        // Dapatkan hasil filter terbaru
         $transaksis = $query->latest()->get();
 
         return view('transaksi.index', compact('transaksis'));
@@ -299,24 +303,14 @@ class TransaksiController extends Controller
 
     public function edit(Transaksi $transaksi)
     {
-        // 1. Ambil data semua anggota untuk isi select option dropdown
         $anggota = Anggota::orderBy('nama', 'asc')->get();
-
-        // 2. Ambil data semua buku untuk isi select option dropdown
-        // Jika Anda menggunakan soft deletes pada model Buku, gunakan Buku::withTrashed()
         $buku = Buku::orderBy('judul', 'asc')->get();
 
-        // 3. Kirim data transaksi, anggota, dan buku ke file Blade yang baru kita ubah kemarin
         return view('transaksi.edit', compact('transaksi', 'anggota', 'buku'));
-
-        return redirect()
-            ->route('transaksi.index')
-            ->with('success', 'Data transaksi berhasil diperbarui!');
     }
 
     public function update(Request $request, Transaksi $transaksi)
     {
-        // 1. Validasi data yang dikirim dari form
         $validated = $request->validate([
             'anggota_id'           => 'required|exists:anggota,id',
             'buku_id'              => 'required|exists:buku,id',
@@ -327,16 +321,17 @@ class TransaksiController extends Controller
             'denda'                => 'nullable|numeric|min:0',
             'keterangan'           => 'nullable|string',
         ], [
-            // Pesan error kustom (opsional, agar lebih user-friendly)
             'anggota_id.required'      => 'Anggota harus dipilih.',
             'buku_id.required'         => 'Buku harus dipilih.',
             'tanggal_kembali.after_or_equal' => 'Batas tanggal kembali tidak boleh sebelum tanggal pinjam.',
         ]);
 
-        // 2. Eksekusi perubahan ke database
+        if (isset($validated['denda'])) {
+            $validated['denda'] = intval($validated['denda']);
+        }
+
         $transaksi->update($validated);
 
-        // 3. Alihkan halaman kembali ke index dengan pesan sukses
         return redirect()
             ->route('transaksi.show', $transaksi)
             ->with('success', 'Data transaksi berhasil diperbarui!');

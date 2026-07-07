@@ -163,17 +163,17 @@ Aplikasi ini mencakup fitur authentication, CRUD data master, transaksi peminjam
 ![Excel Buku](screenshoot/laporan/excelbuku.png)
 
 ### Export Excel Anggota
-![Excel Anggota](screenshoot/laporan/excel-anggota.png)
+![Excel Anggota](screenshoot/laporan/excelanggota.png)
 
 ---
 
 ## 📱 UI / UX Tambahan
 
 ### Responsive Design
-![Responsive](screenshoot/fitur-tambahan/responsivedesign.png)
+![Responsive](screenshoot/fiturtambahan/responsivedesign.png)
 
 ### Riwayat Peminjaman Buku
-![Riwayat](screenshoot/fitur-tambahan/riwayatpeminjamanbuku.png)
+![Riwayat](screenshoot/fiturtambahan/riwayatpeminjamanbuku.png)
 
 ---
 

@@ -12,28 +12,11 @@
                 <li class="text-gray-700 font-medium">{{ $transaksi->kode_transaksi }}</li>
             </ol>
         </nav>
-
-        {{-- Alert Sukses dengan Tombol Silang --}}
-        @if (session('success'))
-            <div class="mb-6" id="success-alert">
-                <div class="bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl p-4 flex items-center justify-between gap-3 shadow-sm">
-                    <div class="flex items-center gap-3">
-                        <i class="bi bi-check-circle-fill text-emerald-500 text-lg"></i>
-                        <div class="text-sm font-medium">
-                            {{ session('success') }}
-                        </div>
-                    </div>
-                    {{-- Tombol Silang --}}
-                    <button type="button" id="btn-close-alert" class="text-emerald-500 hover:text-emerald-800 p-1 rounded-lg hover:bg-emerald-100 transition-colors">
-                        <i class="bi bi-x-lg text-sm"></i>
-                    </button>
-                </div>
-            </div>
-        @endif
         
+        {{-- Kontainer Utama Grid --}}
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
  
-            {{-- Kolom Kiri: Detail Transaksi --}}
+            {{-- ================= KOLOM KIRI: DETAIL TRANSAKSI ================= --}}
             <div class="lg:col-span-2">
                 <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
                     <div class="bg-blue-600 px-6 py-4">
@@ -45,14 +28,22 @@
                     <div class="p-6">
  
                         {{-- Warning Terlambat --}}
-                        @if(strtolower($transaksi->status) == 'dipinjam' && now()->isAfter($transaksi->tanggal_kembali))
-                            <div class="flex items-center gap-3 bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-3 mb-3"> {{-- Mengubah mb-5 menjadi mb-3 agar jarak ke estimasi denda lebih rapat --}}
-                                <i class="bi bi-exclamation-triangle-fill text-lg"></i>
-                                <div>
-                                    <strong>Peringatan!</strong> Peminjaman ini telah terlambat selama
-                                    <strong>{{ abs((int)now()->diffInDays($transaksi->tanggal_kembali)) }} hari</strong>.
+                        @if(strtolower($transaksi->status) == 'dipinjam')
+                            @php
+                                $hari_ini = \Carbon\Carbon::now()->startOfDay();
+                                $tanggal_kembali = \Carbon\Carbon::parse($transaksi->tanggal_kembali)->startOfDay();
+                                $selisih_hari = $tanggal_kembali->diffInDays($hari_ini, false);
+                            @endphp
+
+                            @if($hari_ini->greaterThan($tanggal_kembali))
+                                <div class="flex items-center gap-3 bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-3 mb-3">
+                                    <i class="bi bi-exclamation-triangle-fill text-lg"></i>
+                                    <div>
+                                        <strong>Peringatan!</strong> Peminjaman ini telah terlambat selama 
+                                        <strong>{{ intval(abs($selisih_hari)) }} hari</strong>.
+                                    </div>
                                 </div>
-                            </div>
+                            @endif
                         @endif
  
                         {{-- Detail Info --}}
@@ -113,60 +104,78 @@
                             </div>
                             <div class="flex gap-4 py-2">
                                 <span class="w-48 text-sm font-semibold text-gray-500 flex items-center gap-1.5">
-                                    <i class="bi bi-cash text-blue-500"></i> Total Denda
+                                    <i class="bi bi-cash text-blue-500"></i> Total Denda Resmi
                                 </span>
-                                <span class="font-bold text-red-600">Rp {{ number_format($transaksi->denda ?? 0, 0, ',', '.') }}</span>
+                                <span class="font-bold text-red-600">Rp {{ number_format(intval($transaksi->denda ?? 0), 0, ',', '.') }}</span>
                             </div>
                         </div>
  
                         {{-- Info dikembalikan tepat waktu / terlambat --}}
-                        @if($transaksi->status !== 'Dipinjam' && $transaksi->tanggal_dikembalikan)
-                            @if($transaksi->tanggal_dikembalikan <= $transaksi->tanggal_kembali)
-                                <div class="flex items-center gap-2 bg-green-50 border border-green-200 text-green-700 rounded-lg px-4 py-3 text-sm">
+                        @if(strtolower($transaksi->status) !== 'dipinjam' && $transaksi->tanggal_dikembalikan)
+                            @php
+                                $tgl_kembali = \Carbon\Carbon::parse($transaksi->tanggal_kembali)->startOfDay();
+                                $tgl_dikembalikan = \Carbon\Carbon::parse($transaksi->tanggal_dikembalikan)->startOfDay();
+                            @endphp
+
+                            @if($tgl_dikembalikan->lessThanOrEqualTo($tgl_kembali))
+                                <div class="flex items-center gap-2 bg-green-50 border border-green-200 text-green-700 rounded-lg px-4 py-3 text-sm mb-3">
                                     <i class="bi bi-check-circle"></i>
                                     Dikembalikan tepat waktu pada {{ \Carbon\Carbon::parse($transaksi->tanggal_dikembalikan)->format('d M Y') }}
                                 </div>
                             @else
-                                <div class="flex items-center gap-2 bg-amber-50 border border-amber-200 text-amber-700 rounded-lg px-4 py-3 text-sm">
+                                <div class="flex items-center gap-2 bg-amber-50 border border-amber-200 text-amber-700 rounded-lg px-4 py-3 text-sm mb-3">
                                     <i class="bi bi-exclamation-triangle"></i>
-                                    Terlambat dikembalikan! Denda: Rp {{ number_format($transaksi->denda ?? 0, 0, ',', '.') }}
+                                    Terlambat dikembalikan! Denda Tersimpan: Rp {{ number_format(intval($transaksi->denda ?? 0), 0, ',', '.') }}
                                 </div>
                             @endif
                         @endif
- 
-                    </div>
-                            {{-- BAGIAN BARU: ESTIMASI DENDA TEPAT DI BAWAH ALERT PERINGATAN --}}
+
+                        {{-- ESTIMASI DENDA AKTIF DIPINJAM --}}
+                        @if(strtolower($transaksi->status) == 'dipinjam')
                             @php
-                                $hariTerlambat = abs((int)now()->diffInDays($transaksi->tanggal_kembali));
-                                $tarifDendaPerHari = 1000; 
-                                $estimasiDenda = $hariTerlambat * $tarifDendaPerHari;
+                                $hari_ini = now()->startOfDay();
+                                $tanggal_kembali = \Carbon\Carbon::parse($transaksi->tanggal_kembali)->startOfDay();
+                                $tarifDendaPerHari = 5000;
+
+                                if ($hari_ini->greaterThan($tanggal_kembali)) {
+                                    $hariTerlambat = $tanggal_kembali->diffInDays($hari_ini);
+                                } else {
+                                    $hariTerlambat = 0;
+                                }
+
+                                $estimasiDenda = intval($hariTerlambat * $tarifDendaPerHari);
                             @endphp
 
-                            <div class="flex flex-col sm:flex-row sm:items-center justify-between bg-amber-50/60 border border-amber-200 text-amber-900 rounded-xl px-5 py-4 gap-4 shadow-sm mb-5">
-                                {{-- Sisi Kiri: Ikon & Penjelasan --}}
-                                <div class="flex items-start gap-3.5">
-                                    <div class="p-2 bg-amber-100 text-amber-700 rounded-lg shrink-0 mt-0.5">
-                                        <i class="bi bi-cash-coin text-xl flex"></i>
+                            @if($estimasiDenda > 0)
+                                <div class="flex flex-col sm:flex-row sm:items-center justify-between bg-amber-50/60 border border-amber-200 text-amber-900 rounded-xl px-5 py-4 gap-4 shadow-sm mb-5">
+                                    <div class="flex items-start gap-3.5">
+                                        <div class="p-2 bg-amber-100 text-amber-700 rounded-lg shrink-0 mt-0.5">
+                                            <i class="bi bi-cash-coin text-xl flex"></i>
+                                        </div>
+                                        <div class="flex flex-col gap-0.5">
+                                            <span class="font-bold text-amber-800 text-base">Estimasi Denda Akumulatif</span>
+                                            <span class="text-sm text-amber-700/80 font-medium">Denda berjalan sementara (Terlambat {{ $hariTerlambat }} hari) sebelum buku dikembalikan secara fisik.</span>
+                                        </div>
                                     </div>
-                                    <div class="flex flex-col gap-0.5">
-                                        <span class="font-bold text-amber-800 text-base">Estimasi Denda Akumulatif</span>
-                                        <span class="text-sm text-amber-700/80 font-medium">Denda berjalan sementara sebelum buku dikembalikan secara fisik.</span>
+                                    
+                                    <div class="bg-white/80 border border-amber-100 rounded-lg px-4 py-2 text-right shadow-inner shrink-0 self-end sm:self-center">
+                                        <span class="text-xs font-bold text-amber-600/80 block uppercase tracking-wider mb-0.5">Total Sementara</span>
+                                        <span class="text-xl font-black text-amber-700 tracking-tight">
+                                            Rp {{ number_format($estimasiDenda, 0, ',', '.') }}
+                                        </span>
                                     </div>
                                 </div>
-                                
-                                {{-- Sisi Kanan: Nominal Denda --}}
-                                <div class="bg-white/80 border border-amber-100 rounded-lg px-4 py-2 text-right shadow-inner shrink-0 self-end sm:self-center">
-                                    <span class="text-xs font-bold text-amber-600/80 block uppercase tracking-wider mb-0.5">Total Sementara</span>
-                                    <span class="text-xl font-black text-amber-700 tracking-tight">
-                                        Rp {{ number_format($estimasiDenda, 0, ',', '.') }}
-                                    </span>
-                                </div>
-                            </div>
-                </div>
-            </div>
+                            @endif
+                        @endif
+
+                    </div> {{-- Penutup p-6 --}}
+                </div> {{-- Penutup bg-white rounded-xl --}}
+            </div> {{-- Penutup lg:col-span-2 (KOLOM KIRI SELESAI) --}}
  
-            {{-- Kolom Kanan: Aksi --}}
+            {{-- ================= KOLOM KANAN: AKSI & INFO BUKU ================= --}}
             <div class="flex flex-col gap-4">
+                
+                {{-- Card Aksi --}}
                 <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
                     <div class="bg-gray-600 px-5 py-3">
                         <h6 class="text-white font-semibold flex items-center gap-1.5">
@@ -174,10 +183,9 @@
                         </h6>
                     </div>
                     <div class="p-5 flex flex-col gap-2">
-                        <a href="{{ route('transaksi.edit', $transaksi->id ?? 1) }}"
+                        <a href="{{ route('transaksi.edit', $transaksi->id) }}"
                             class="inline-flex items-center justify-center bg-amber-500 hover:bg-amber-600 text-white text-sm font-medium px-3 py-1.5 rounded transition shadow-sm">
-                            <i class="bi bi-pencil-square me-1"></i>
-                            Edit
+                            <i class="bi bi-pencil-square me-1"></i> Edit
                         </a>
                         <a href="{{ route('transaksi.index') }}" class="inline-flex items-center justify-center gap-2 border border-blue-500 text-blue-600 hover:bg-blue-50 px-4 py-2 rounded-lg text-sm font-semibold transition">
                             <i class="bi bi-arrow-left"></i> Kembali
@@ -195,7 +203,7 @@
                     </div>
                 </div>
  
-                {{-- Info Card --}}
+                {{-- Info Card Buku --}}
                 <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
                     <div class="bg-cyan-500 px-5 py-3">
                         <h6 class="text-white font-semibold flex items-center gap-1.5">
@@ -209,32 +217,33 @@
                         <div><span class="font-semibold text-gray-700">Stok Saat Ini:</span> {{ $transaksi->buku->stok ?? '-' }} buku</div>
                     </div>
                 </div>
-            </div>
 
-        </div>
-    </div>
+            </div> {{-- Penutup Kolom Kanan --}}
+
+        </div> {{-- Penutup Kontainer Utama Grid --}}
+    </div> {{-- Penutup Padding Utama --}}
  
-    @push('scripts')
+    {{-- Script SweetAlert2 ditempel langsung agar berjalan mulus --}}
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script>
-        // Memastikan skrip berjalan setelah DOM selesai dimuat sepenuhnya
         document.addEventListener('DOMContentLoaded', function () {
             
-            // Perbaikan Aksi Tombol Silang Tutup Alert
-            const closeAlertBtn = document.getElementById('btn-close-alert');
-            if (closeAlertBtn) {
-                closeAlertBtn.addEventListener('click', function() {
-                    const alertBox = document.getElementById('success-alert');
-                    if (alertBox) {
-                        alertBox.remove();
-                    }
+            // Catch Notifikasi Sukses via Session Laravel dan tampilkan dengan SweetAlert2
+            @if(session('success'))
+                Swal.fire({
+                    title: 'Berhasil!',
+                    text: "{{ session('success') }}",
+                    icon: 'success',
+                    confirmButtonColor: '#2563eb',
+                    confirmButtonText: 'Oke'
                 });
-            }
+            @endif
 
-            // Aksi Konfirmasi Tombol Kembalikan Buku (SweetAlert2)
+            // Memicu SweetAlert Konfirmasi Pengembalian Buku
             const btnKembalikan = document.getElementById('btn-kembalikan');
             if (btnKembalikan) {
-                btnKembalikan.addEventListener('click', function() {
+                btnKembalikan.addEventListener('click', function(e) {
+                    e.preventDefault(); 
                     Swal.fire({
                         title: 'Konfirmasi Pengembalian',
                         text: 'Apakah Anda yakin ingin mengembalikan buku ini?',
@@ -252,6 +261,5 @@
             }
         });
     </script>
-    @endpush
  
 </x-app-layout>

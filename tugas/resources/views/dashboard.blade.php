@@ -215,7 +215,7 @@
         {{-- CHARTS ROW 2 : Kategori Buku (bar) + Status Transaksi (donut) --}}
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
  
-            {{-- Bar: Top 5 Kategori Buku --}}
+            {{-- Pie: Kategori Buku --}}
             <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
                 <div class="mb-4">
                     <h3 class="text-lg font-bold text-gray-900 flex items-center gap-2">
