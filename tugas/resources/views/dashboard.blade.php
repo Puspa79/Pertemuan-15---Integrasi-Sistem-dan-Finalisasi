@@ -191,7 +191,7 @@
                         @empty
                             <tr>
                                 <td colspan="5" class="px-6 py-8 text-center text-sm text-gray-500">
-                                    🎉 Tidak ada buku yang terlambat saat ini
+                                    Tidak ada buku yang terlambat saat ini
                                 </td>
                             </tr>
                         @endforelse
@@ -225,7 +225,7 @@
                         </svg>
                         Kategori Buku
                     </h3>
-                    <p class="text-sm text-gray-500 mt-1">5 Kategori buku dengan peminjaman terbanyak</p>
+                    <p class="text-sm text-gray-500 mt-1">Kategori dengan buku terbanyak</p>
                 </div>
                 <div class="relative" style="height: 280px;">
                     <canvas id="chartKategoriPopuler"></canvas>
@@ -250,7 +250,7 @@
  
         </div>
  
-        {{-- CHARTS ROW 3 : Top 10 Buku Terpopuler (bar, full width) --}}
+        {{-- CHARTS ROW 3 : Top 5 Buku Terpopuler (bar, full width) --}}
         @isset($top10Buku)
         <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-8">
             <div class="mb-4">
@@ -258,7 +258,7 @@
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                     </svg>
-                    Top 10 Buku Terpopuler
+                    Top 5 Buku Terpopuler
                 </h3>
                 <p class="text-sm text-gray-500 mt-1">Ranking buku dengan jumlah peminjaman terbanyak</p>
             </div>

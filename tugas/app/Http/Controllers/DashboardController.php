@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use Illuminate\Support\Facades\DB;
 use App\Models\Buku;
 use App\Models\Anggota;
 use App\Models\Transaksi;
@@ -84,20 +85,17 @@ class DashboardController extends Controller
         $jumlahTerlambat = $bukuTerlambat->count();
 
         // Ambil data chart berdasarkan kategori buku
-        $kategoriChart = Buku::with('kategori')
-            ->withCount('transaksis')
-            ->get()
-            ->groupBy(function ($buku) {
-                return optional($buku->kategori)->nama ?? 'Tanpa Kategori';
-            })
-            ->map(fn ($group, $nama) => [
-                'nama'       => $nama,
-                'buku_count' => $group->sum('transaksis_count'),
-            ])
-            ->sortByDesc('buku_count')
+        $kategoriChart = DB::table('buku')
+            ->select('kategori as nama', DB::raw('count(id) as buku_count'))
+            ->whereNotNull('kategori')
+            ->where('kategori', '!=', '')
+            ->whereNull('deleted_at') // Tambahkan ini jika kamu menggunakan Soft Deletes pada Buku
+            ->groupBy('kategori')
+            ->orderBy('buku_count', 'desc')
             ->take(5)
-            ->values();
+            ->get();
 
+        // Pastikan variabel $kategoriChart ini tetap di-return ke view bersama dengan variabel lainnya
         return view('dashboard', compact(
             'stats',
             'chartData',
@@ -107,7 +105,7 @@ class DashboardController extends Controller
             'recentTransaksi',
             'bukuTerlambat',
             'jumlahTerlambat',
-            'kategoriChart'
+            'kategoriChart' // <--- pastikan ini ada
         ));
     }
 }

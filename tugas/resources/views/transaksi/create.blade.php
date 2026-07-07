@@ -57,7 +57,9 @@
                                 <option value="">-- Pilih Buku --</option>
                                 @foreach($bukus as $buku)
                                     <option value="{{ $buku->id }}" {{ old('buku_id') == $buku->id ? 'selected' : '' }}>
-                                        {{ $buku->judul }} - (Stok: {{ $buku->stok }})
+                                        {{ $buku->judul }} 
+                                        [{{ $buku->kategori ? $buku->kategori : 'Tanpa Kategori' }}] 
+                                        - (Stok: {{ $buku->stok }})
                                     </option>
                                 @endforeach
                             </select>
@@ -66,7 +68,7 @@
                             @enderror
                             <p class="text-gray-400 text-xs mt-1">Hanya buku dengan stok tersedia yang dapat dipinjam</p>
                         </div>
- 
+                                                
                         {{-- Tanggal Pinjam --}}
                         <div class="mb-5">
                             <label for="tanggal_pinjam" class="block text-sm font-semibold text-gray-700 mb-1">
