@@ -131,13 +131,13 @@ Aplikasi ini mencakup fitur authentication, CRUD data master, transaksi peminjam
 ## 📊 Dashboard
 
 ### Statistik Akurat
-![Statistik](screenshoot/fitur-tambahan/alertdetailtransaksi.png)
+![Statistik](screenshoot/fiturtambahan/alertdetailtransaksi.png)
 
 ### Charts Tampil Data
-![Chart Advanced](screenshoot/fitur-tambahan/chartadvanced.png)
+![Chart Advanced](screenshoot/fiturtambahan/chartadvanced.png)
 
 ### Quick Actions Berfungsi
-![Notifikasi Terlambat](screenshoot/fitur-tambahan/notifikasiterlambat.png)
+![Notifikasi Terlambat](screenshoot/fiturtambahan/notifikasiterlambat.png)
 
 ---
 
@@ -147,7 +147,7 @@ Aplikasi ini mencakup fitur authentication, CRUD data master, transaksi peminjam
 ![Search Global](screenshoot/CRUD-Buku/searchglobal.png)
 
 ### Tabs Berfungsi
-![Filter Kategori](screenshoot/fitur-tambahan/filterbukukategori.png)
+![Filter Kategori](screenshoot/fiturtambahan/filterbukukategori.png)
 
 ### Highlighting Works
 ![Highlight](screenshoot/CRUD-Buku/searchglobal.png)
